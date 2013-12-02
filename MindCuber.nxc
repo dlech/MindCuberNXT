@@ -4,14 +4,15 @@
  * Author              : David Gilday
  *
  * Copyright           : (C) 2011-2013 David Gilday
+ *                       (C) 2013 David Lechner
  *
  * Website             : http://mindcuber.com
  *
  * Release Information : v2.2
  *
- * Modified            : $Date: 2013-07-13 19:04:59 +0100 (Sat, 13 Jul 2013) $
+ * Modified            : 2013-12-01
  *
- * Revision            : $Revision: 6401 $
+ * Revision            :
  *
  * Usage:
  *
@@ -32,7 +33,7 @@
 // Define NXT_8527 to run on the "Orange Box" variant of MindCuber rather
 // than the default variant for NXT 2.0
 
-//#define NXT_8527
+#define NXT_8527
 
 // Define SOLVE_PATTERN and one or more PATTERN_...s to "solve" to a pattern
 // If ONLY_PATTERNS is also defined, MindCuber will always create one of the
@@ -238,10 +239,14 @@ void flash_off() {
 // Background task and routines to display timer during solve
 //-----------------------------------------------------------------------------
 
+#define S_TOUCH   IN_4
+
 mutex  tmr_mtx;
 bool   tmr_on   = false;
+bool   tmr2_on  = false;
 long   tmr_time = 0;
 string tmr_str  = "      ";
+string tmr2_str = "      ";
 
 string ms_to_str(long ms) {
   long t = ms / 100;
@@ -257,11 +262,19 @@ task timer_task() {
   do {
     long del = 100;
     Acquire(tmr_mtx);
-    on = tmr_on;
+     if (SensorValueBool(S_TOUCH)) {
+      tmr2_on = false;
+    }
+    on = tmr_on || tmr2_on;
     if (on) {
       long t = CurrentTick()-tmr_time;
       del -= (t % 100);
-      tmr_str = ms_to_str(t);
+      if (tmr_on) {
+        tmr_str = ms_to_str(t);
+      }
+      if (tmr2_on) {
+        tmr2_str = ms_to_str(t);
+      }
       TextOut(0, LCD_LINE8, tmr_str);
     }
     Release(tmr_mtx);
@@ -271,8 +284,9 @@ task timer_task() {
 
 void timer_start() {
   Acquire(tmr_mtx);
-  if (!tmr_on) {
+  if (!tmr_on && !tmr2_on) {
     tmr_on   = true;
+    tmr2_on  = true;
     tmr_time = CurrentTick();
     start timer_task;
   }
@@ -307,6 +321,7 @@ bool check_cube_detect() {
     SetSensorUltrasonic(S_ULTRA);
     ResetSensor(S_ULTRA);
   }
+  TextOut(0, LCD_LINE8, StrCat(NumToStr(SensorUS(S_ULTRA)),  "          "));
   long diff = CurrentTick()-cd_time;
   if (diff > 0) {
     cd_time += CD_DELAY;
@@ -616,7 +631,7 @@ void move_rel(int m, long pos, long off = 0) {
 #else
 #define T_SOFF  12
 #define T_SCNT  15
-#define T_SCNR  105
+#define T_SCNR  110
 #define T_SEDG  88
 #endif
 #define T_TILT  85
@@ -1097,12 +1112,12 @@ void display_face(int x, int y, byte &cube[], int f, int o) {
 }
 
 void display_cube(byte &cube[]) {
-  display_face(0,  LCD_LINE3, cube, U, 2);
-  display_face(19, LCD_LINE3, cube, F, 2);
-  display_face(38, LCD_LINE3, cube, D, 2);
-  display_face(38, LCD_LINE6, cube, L, 4);
-  display_face(57, LCD_LINE6, cube, B, 0);
-  display_face(76, LCD_LINE6, cube, R, 4);
+  display_face(1,  LCD_LINE3, cube, U, 2);
+  display_face(20, LCD_LINE3, cube, F, 2);
+  display_face(39, LCD_LINE3, cube, D, 2);
+  display_face(39, LCD_LINE6, cube, L, 4);
+  display_face(58, LCD_LINE6, cube, B, 0);
+  display_face(77, LCD_LINE6, cube, R, 4);
 }
 
 void init_cube(byte &cube[]) {
@@ -1836,7 +1851,7 @@ bool scan_solve_cube(byte &cube[]) {
   ClearScreen();
   display_cube(cube);
   if (solved) {
-    TextOut(0, LCD_LINE1, "Solving...");
+    TextOut(0, LCD_LINE1, "Ready...");
     scan_away();
     flash_off();
     scan_wait();
@@ -1908,9 +1923,11 @@ void calibrate_tilt() {
 task main() {
   byte cube[NFACE*8];
 
+  SetSensorTouch(S_TOUCH);
+
   banner();
 #ifdef NXT_8527
-  TextOut(0, LCD_LINE3, "NXT (Orange box)");
+  TextOut(0, LCD_LINE3, "NXT");
 #else
   TextOut(0, LCD_LINE3, "NXT 2.0");
 #endif
@@ -1979,6 +1996,15 @@ task main() {
       timer_start();
       for (int tries = 0; !solved && tries < 3; tries ++) {
         if (scan_solve_cube(cube)) {
+          timer_stop();
+          TextOut(0, LCD_LINE8, "      ");
+          while (!SensorValueBool(S_TOUCH))
+            Wait(100);
+          TextOut(0, LCD_LINE1, "Set...   ");
+          while (SensorValueBool(S_TOUCH))
+            Wait(100);
+          TextOut(0, LCD_LINE1, "Solving...");
+          timer_start();
           // Apply solution to the cube
           for (int i = 0; i < solve_n; i++) {
             int fi = solve_fce[i];
@@ -1990,19 +2016,19 @@ task main() {
                 rn = solve_rot[j];
             }
             ClearLine(LCD_LINE2);
-            TextOut(0*6, LCD_LINE2, "Move    of");
-            NumOut(5*6,  LCD_LINE2, i+1);
-            NumOut(11*6, LCD_LINE2, solve_n);
+            TextOut(0*6,  LCD_LINE2, "Move    of");
+            NumOut (5*6,  LCD_LINE2, i+1);
+            NumOut (11*6, LCD_LINE2, solve_n);
             manipulate(cube, fi, ri, rn);
           }
           timer_stop();
           flash_green();
           banner();
-          TextOut(0*6, LCD_LINE3, "Solved!");
-          TextOut(0*6, LCD_LINE4, "Moves");
-          NumOut(6*6,  LCD_LINE4, solve_n);
-          TextOut(0*6, LCD_LINE5, "Time");
-          TextOut(6*6, LCD_LINE5, tmr_str);
+          TextOut( 0*6, LCD_LINE3, "Solved!");
+          TextOut( 0*6, LCD_LINE4, "Moves");
+          NumOut ( 6*6, LCD_LINE4, solve_n);
+          TextOut( 0*6, LCD_LINE5, "My Time");
+          TextOut(10*6, LCD_LINE5, tmr_str);
           solved = true;
           msg_line = LCD_LINE7;
         }
@@ -2024,6 +2050,12 @@ task main() {
     scan_wait();
     if (solved)
       turn(8);
+   while (tmr2_on) {
+     Wait(100);
+   }
+   TextOut( 0*6, LCD_LINE6, "Your Time");
+   TextOut(10*6, LCD_LINE6, tmr2_str);
+   TextOut( 0*6, LCD_LINE8, "      ");
   }
 }
 
