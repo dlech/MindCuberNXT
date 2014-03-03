@@ -9,9 +9,9 @@ http://mindcuber.com
 
 Release Information: v2.2
 
-Release History:
-  v2.2 - 13th July 2013, include support for cubes with black stickers
-  v2.1 - 22nd June 2013, initial public release
+Release History:  
+ - v2.2 - 13th July 2013, include support for cubes with black stickers  
+ - v2.1 - 22nd June 2013, initial public release
 
 Usage:
 -----
@@ -40,27 +40,27 @@ rather than the normal solved state.
 Using BricxCC:
 -------------
 
-1) Install BricxCC on your computer (see notes below for link)
+1. Install BricxCC on your computer (see notes below for link)
 
-2) Open BricxCC
+2. Open BricxCC
 
-3) Open the menu Edit/Preferences..., select the NBC/NXC tab and
+3. Open the menu Edit/Preferences..., select the NBC/NXC tab and
    set the preferences recommended in the notes below
 
-4) Use menu Tools/Find Brick... to connect to the NXT
+4. Use menu Tools/Find Brick... to connect to the NXT
 
-5) Use the menu File/Open... to open the MindCuber.nxc source file
+5. Use the menu File/Open... to open the MindCuber.nxc source file
 
-6) If you wish to compile for the #8257 variant of MindCuber, remove the
+6. If you wish to compile for the #8257 variant of MindCuber, remove the
    comment characters from the line in MindCuber.rxe that says:
 
-//#define NXT_8527
+        //#define NXT_8527
+    
+    to say:
 
-   to say:
+        #define NXT_8527
 
-#define NXT_8527
-
-7) Select menu Compile/Download and Run to compile the program, download
+7. Select menu Compile/Download and Run to compile the program, download
    it to the NXT and run
 
 The source includes some other options for creating patterns by uncommenting
@@ -69,8 +69,8 @@ other lines near the top of the MindCuber.nxc.
 The source includes options to solve cubes with black stickers rather than
 white. Uncomment one or both of the following lines as appropriate:
 
-//#define BLACK_FACE
-//#define WHITE_LOGO
+    //#define BLACK_FACE
+    //#define WHITE_LOGO
 
 The option for using the HiTechnic v2 color sensor as an alternative to the
 LEGO color sensor has not been tested so may need some additional work.
@@ -97,8 +97,7 @@ BricxCC preferences for compiling with NBC/NXC:
   + NXT 2.0 compatible firmware
   + Automatic firmware version
   + Optimization level 2
+
 Not tested with:
   - internal compiler
   - enahanced firmware
-
-*END*
